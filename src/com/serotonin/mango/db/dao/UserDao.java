@@ -16,6 +16,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+ /* *************************************************************************************
+  *                                 Change Log                                          * 
+  * ------------------------------------------------------------------------------------*
+  * Developer: Sakshi Tokekar                                                           *
+  * Developer Identification: ST01                                                      *
+  * Change Request No: 3                                                                *
+  * Change Request Identification: CR3                                                  * 
+  * Date of Change: 17th February 2025                                                  *
+  * Description: Error should be fixed, allowing an administrator’s password to be      *
+  *              changed without an error popup appearing. Hence adding a validation    *
+  *              on HomeUrl before the data is updated in the users table               *
+  * ____________________________________________________________________________________*
+  * *************************************************************************************
+  */
+
 package com.serotonin.mango.db.dao;
 
 import java.sql.PreparedStatement;
@@ -147,11 +163,28 @@ public class UserDao extends BaseDao {
     void updateUser(User user) {
         ejt.update(
                 USER_UPDATE,
-                new Object[] { user.getUsername(), user.getPassword(), user.getEmail(), user.getPhone(),
-                        boolToChar(user.isAdmin()), boolToChar(user.isDisabled()), user.getHomeUrl(),
-                        user.getReceiveAlarmEmails(), boolToChar(user.isReceiveOwnAuditEvents()), user.getId() });
+                new Object[] { 
+                    user.getUsername(), 
+                    user.getPassword(), 
+                    user.getEmail(), 
+                    user.getPhone(),
+                    boolToChar(user.isAdmin()), 
+                    boolToChar(user.isDisabled()), 
+                    // ST01-CR3-02/17/2025: Validating the homeURL for null values and replacing with default home page url if null
+                    checkHomeUrl(user.getHomeUrl()), // ST01-CR3-02/17/2025
+                    user.getReceiveAlarmEmails(), 
+                    boolToChar(user.isReceiveOwnAuditEvents()), 
+                    user.getId() });
         saveRelationalData(user);
     }
+        
+    // Start of Changes: ST01-CR3-02/17/2025
+    // Created a validation function which replaces null value for homeURL with default home page url
+    private String checkHomeUrl(String value) {
+        return value == null ? "http://localhost:8080/test/watch_list.shtm" : value;
+    }
+    // End of Changes: ST01-CR3-02/17/2025
+        
 
     private void saveRelationalData(final User user) {
         // Delete existing permissions.
