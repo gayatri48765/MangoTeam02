@@ -34,7 +34,16 @@ public class Functions {
     public static String getHtmlText(DataPointVO point, PointValueTime pointValue) {
         String text = point.getTextRenderer().getText(pointValue, TextRenderer.HINT_FULL);
         String colour = point.getTextRenderer().getColour(pointValue);
+        text = truncateNumericValue(text);
         return getHtml(colour, text, point.getPointLocator().getDataTypeId() == DataTypes.ALPHANUMERIC);
+    }
+
+    private static String truncateNumericValue(String text) {
+        int dotIndex = text.indexOf(".");
+        if (dotIndex != -1 && text.length() > dotIndex + 3) {
+            text = text.substring(0, dotIndex + 3); // Keep only two decimal places
+        }
+        return text;
     }
 
     public static String getRenderedText(DataPointVO point, PointValueTime pointValue) {
