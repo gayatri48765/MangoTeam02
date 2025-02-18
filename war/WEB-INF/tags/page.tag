@@ -65,7 +65,7 @@
       dwr.util.setEscapeHtml(false);
       <c:if test="${!empty sessionUser}">
         dojo.addOnLoad(mango.header.onLoad);
-        dojo.addOnLoad(function() { setUserMuted(${sessionUser.muted}); });
+        dojo.addOnLoad(function() { setUserMuted(true); });
       </c:if>
       
       function setLocale(locale) {
