@@ -70,7 +70,7 @@ mango.longPoll.pollCB = function(response) {
         return;
     
     if (typeof(response.highestUnsilencedAlarmLevel) != "undefined") {
-        if (response.highestUnsilencedAlarmLevel > 0) {
+        if (response.highestUnsilencedAlarmLevel > 0 && !mango.soundPlayer.muted) {
             setAlarmLevelImg(response.highestUnsilencedAlarmLevel, $("__header__alarmLevelImg"));
             setAlarmLevelText(response.highestUnsilencedAlarmLevel, $("__header__alarmLevelText"));
             if (!mango.header.evtVisualizer.started)
