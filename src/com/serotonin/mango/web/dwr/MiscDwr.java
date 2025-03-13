@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Arrays; // Add this line
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -279,168 +280,254 @@ public class MiscDwr extends BaseDwr {
         return doLongPoll(pollSessionId);
     }
 
+//    public Map<String, Object> doLongPoll(int pollSessionId) {
+//        Map<String, Object> response = new HashMap<String, Object>();
+//        HttpServletRequest httpRequest = WebContextFactory.get().getHttpServletRequest();
+//        User user = Common.getUser(httpRequest);
+//        EventManager eventManager = Common.ctx.getEventManager();
+//        EventDao eventDao = new EventDao();
+//
+//        LongPollData data = getLongPollData(pollSessionId, false);
+//        data.updateTimestamp();
+//
+//        LongPollRequest pollRequest = data.getRequest();
+//
+//        long expireTime = System.currentTimeMillis() + 60000; // One minute
+//        LongPollState state = data.getState();
+//        int waitTime = SystemSettingsDao.getIntValue(SystemSettingsDao.UI_PERFORAMANCE);
+//
+//        // For users that log in on multiple machines (or browsers), reset the last alarm timestamp so that it always
+//        // gets reset with at least each new poll. For now this beats writing user-specific event change tracking code.
+//        state.setLastAlarmLevelChange(0);
+//
+//        while (!pollRequest.isTerminated() && System.currentTimeMillis() < expireTime) {
+//            if (pollRequest.isMaxAlarm() && user != null) {
+//                // Check the max alarm. First check if the events have changed since the last time this request checked.
+//                long lastEMUpdate = eventManager.getLastAlarmTimestamp();
+//                if (state.getLastAlarmLevelChange() < lastEMUpdate) {
+//                    state.setLastAlarmLevelChange(lastEMUpdate);
+//
+//                    // The events have changed. See if the user's particular max alarm level has changed.
+//                    int maxAlarmLevel = eventDao.getHighestUnsilencedAlarmLevel(user.getId());
+//                    if (maxAlarmLevel != state.getMaxAlarmLevel()) {
+//                        response.put("highestUnsilencedAlarmLevel", maxAlarmLevel);
+//                        state.setMaxAlarmLevel(maxAlarmLevel);
+//                    }
+//                }
+//            }
+//
+//            if (pollRequest.isWatchList() && user != null) {
+//                synchronized (state) {
+//                    List<WatchListState> newStates = watchListDwr.getPointData();
+//                    List<WatchListState> differentStates = new ArrayList<WatchListState>();
+//
+//                    for (WatchListState newState : newStates) {
+//                        WatchListState oldState = state.getWatchListState(newState.getId());
+//                        if (oldState == null)
+//                            differentStates.add(newState);
+//                        else {
+//                            WatchListState copy = newState.clone();
+//                            copy.removeEqualValue(oldState);
+//                            if (!copy.isEmpty())
+//                                differentStates.add(copy);
+//                        }
+//                    }
+//
+//                    if (!differentStates.isEmpty()) {
+//                        response.put("watchListStates", differentStates);
+//                        state.setWatchListStates(newStates);
+//                    }
+//                }
+//            }
+//
+//            if (pollRequest.isPointDetails() && user != null) {
+//                WatchListState newState = dataPointDetailsDwr.getPointData();
+//                WatchListState responseState;
+//                WatchListState oldState = state.getPointDetailsState();
+//
+//                if (oldState == null)
+//                    responseState = newState;
+//                else {
+//                    responseState = newState.clone();
+//                    responseState.removeEqualValue(oldState);
+//                }
+//
+//                if (!responseState.isEmpty()) {
+//                    response.put("pointDetailsState", responseState);
+//                    state.setPointDetailsState(newState);
+//                }
+//            }
+//
+//            if ((pollRequest.isView() && user != null) || (pollRequest.isViewEdit() && user != null)
+//                    || pollRequest.getAnonViewId() > 0) {
+//                List<ViewComponentState> newStates;
+//                if (pollRequest.getAnonViewId() > 0)
+//                    newStates = viewDwr.getViewPointDataAnon(pollRequest.getAnonViewId());
+//                else
+//                    newStates = viewDwr.getViewPointData(pollRequest.isViewEdit());
+//                List<ViewComponentState> differentStates = new ArrayList<ViewComponentState>();
+//
+//                for (ViewComponentState newState : newStates) {
+//                    ViewComponentState oldState = state.getViewComponentState(newState.getId());
+//                    if (oldState == null)
+//                        differentStates.add(newState);
+//                    else {
+//                        ViewComponentState copy = newState.clone();
+//                        copy.removeEqualValue(oldState);
+//                        if (!copy.isEmpty())
+//                            differentStates.add(copy);
+//                    }
+//                }
+//
+//                if (!differentStates.isEmpty()) {
+//                    response.put("viewStates", differentStates);
+//                    state.setViewComponentStates(newStates);
+//                }
+//            }
+//
+//            if (pollRequest.isCustomView()) {
+//                List<CustomComponentState> newStates = customViewDwr.getViewPointData();
+//                List<CustomComponentState> differentStates = new ArrayList<CustomComponentState>();
+//
+//                for (CustomComponentState newState : newStates) {
+//                    CustomComponentState oldState = state.getCustomViewState(newState.getId());
+//                    if (oldState == null)
+//                        differentStates.add(newState);
+//                    else {
+//                        CustomComponentState copy = newState.clone();
+//                        copy.removeEqualValue(oldState);
+//                        if (!copy.isEmpty())
+//                            differentStates.add(copy);
+//                    }
+//                }
+//
+//                if (!differentStates.isEmpty()) {
+//                    response.put("customViewStates", differentStates);
+//                    state.setCustomViewStates(newStates);
+//                }
+//            }
+//
+//            if (pollRequest.isPendingAlarms() && user != null) {
+//                // Create the list of most current pending alarm content.
+//                Map<String, Object> model = new HashMap<String, Object>();
+//                model.put("events", eventDao.getPendingEvents(user.getId()));
+//                model.put("pendingEvents", true);
+//                model.put("noContentWhenEmpty", true);
+//                String currentContent = generateContent(httpRequest, "eventList.jsp", model);
+//                currentContent = StringUtils.trimWhitespace(currentContent);
+//
+//                if (!StringUtils.isEqual(currentContent, state.getPendingAlarmsContent())) {
+//                    response.put("pendingAlarmsContent", currentContent);
+//                    state.setPendingAlarmsContent(currentContent);
+//                }
+//            }
+//
+//            if (!response.isEmpty())
+//                break;
+//
+//            synchronized (pollRequest) {
+//                try {
+//                    pollRequest.wait(waitTime);
+//                }
+//                catch (InterruptedException e) {
+//                    // no op
+//                }
+//            }
+//
+//        }
+//
+//        if (pollRequest.isTerminated())
+//            response.put("terminated", true);
+//
+//        return response;
+//    }
+
+    //MYYYYY
+//    public Map<String, Object> doLongPoll(int pollSessionId) {
+//        Map<String, Object> response = new HashMap<>();
+//        HttpServletRequest httpRequest = WebContextFactory.get().getHttpServletRequest();
+//        User user = Common.getUser(httpRequest);
+//        LongPollData data = getLongPollData(pollSessionId, false);
+//        data.updateTimestamp();
+//        LongPollRequest pollRequest = data.getRequest();
+//        LongPollState state = data.getState();
+//
+//        // Create handlers for each request type
+//        List<RequestHandler> handlers = Arrays.asList(
+//                new MaxAlarmHandler(),
+//                new WatchListHandler(),
+//                new PointDetailsHandler(),
+//                new ViewHandler(),
+//                new CustomViewHandler(),
+//                new PendingAlarmsHandler()
+//        );
+//
+//        // Process each handler
+//        for (RequestHandler handler : handlers) {
+//            handler.handleRequest(pollRequest, user, response, state);
+//            if (!response.isEmpty()) {
+//                break;
+//            }
+//        }
+//
+//        // Wait logic remains the same
+//        synchronized (pollRequest) {
+//            try {
+//                pollRequest.wait(SystemSettingsDao.getIntValue(SystemSettingsDao.UI_PERFORAMANCE));
+//            } catch (InterruptedException e) {
+//                // no op
+//            }
+//        }
+//
+//        if (pollRequest.isTerminated()) {
+//            response.put("terminated", true);
+//        }
+//
+//        return response;
+//    }
+
     public Map<String, Object> doLongPoll(int pollSessionId) {
-        Map<String, Object> response = new HashMap<String, Object>();
+        Map<String, Object> response = new HashMap<>();
         HttpServletRequest httpRequest = WebContextFactory.get().getHttpServletRequest();
         User user = Common.getUser(httpRequest);
-        EventManager eventManager = Common.ctx.getEventManager();
-        EventDao eventDao = new EventDao();
-
         LongPollData data = getLongPollData(pollSessionId, false);
         data.updateTimestamp();
-
         LongPollRequest pollRequest = data.getRequest();
-
-        long expireTime = System.currentTimeMillis() + 60000; // One minute
         LongPollState state = data.getState();
-        int waitTime = SystemSettingsDao.getIntValue(SystemSettingsDao.UI_PERFORAMANCE);
 
-        // For users that log in on multiple machines (or browsers), reset the last alarm timestamp so that it always
-        // gets reset with at least each new poll. For now this beats writing user-specific event change tracking code.
-        state.setLastAlarmLevelChange(0);
+        // Create handlers for each request type
+        List<RequestHandler> handlers = Arrays.asList(
+                new MaxAlarmHandler(),
+                new WatchListHandler(),
+                new PointDetailsHandler(),
+                new ViewHandler(),
+                new CustomViewHandler(),
+                new PendingAlarmsHandler(this) // Pass the MiscDwr instance
+        );
 
-        while (!pollRequest.isTerminated() && System.currentTimeMillis() < expireTime) {
-            if (pollRequest.isMaxAlarm() && user != null) {
-                // Check the max alarm. First check if the events have changed since the last time this request checked.
-                long lastEMUpdate = eventManager.getLastAlarmTimestamp();
-                if (state.getLastAlarmLevelChange() < lastEMUpdate) {
-                    state.setLastAlarmLevelChange(lastEMUpdate);
-
-                    // The events have changed. See if the user's particular max alarm level has changed.
-                    int maxAlarmLevel = eventDao.getHighestUnsilencedAlarmLevel(user.getId());
-                    if (maxAlarmLevel != state.getMaxAlarmLevel()) {
-                        response.put("highestUnsilencedAlarmLevel", maxAlarmLevel);
-                        state.setMaxAlarmLevel(maxAlarmLevel);
-                    }
-                }
-            }
-
-            if (pollRequest.isWatchList() && user != null) {
-                synchronized (state) {
-                    List<WatchListState> newStates = watchListDwr.getPointData();
-                    List<WatchListState> differentStates = new ArrayList<WatchListState>();
-
-                    for (WatchListState newState : newStates) {
-                        WatchListState oldState = state.getWatchListState(newState.getId());
-                        if (oldState == null)
-                            differentStates.add(newState);
-                        else {
-                            WatchListState copy = newState.clone();
-                            copy.removeEqualValue(oldState);
-                            if (!copy.isEmpty())
-                                differentStates.add(copy);
-                        }
-                    }
-
-                    if (!differentStates.isEmpty()) {
-                        response.put("watchListStates", differentStates);
-                        state.setWatchListStates(newStates);
-                    }
-                }
-            }
-
-            if (pollRequest.isPointDetails() && user != null) {
-                WatchListState newState = dataPointDetailsDwr.getPointData();
-                WatchListState responseState;
-                WatchListState oldState = state.getPointDetailsState();
-
-                if (oldState == null)
-                    responseState = newState;
-                else {
-                    responseState = newState.clone();
-                    responseState.removeEqualValue(oldState);
-                }
-
-                if (!responseState.isEmpty()) {
-                    response.put("pointDetailsState", responseState);
-                    state.setPointDetailsState(newState);
-                }
-            }
-
-            if ((pollRequest.isView() && user != null) || (pollRequest.isViewEdit() && user != null)
-                    || pollRequest.getAnonViewId() > 0) {
-                List<ViewComponentState> newStates;
-                if (pollRequest.getAnonViewId() > 0)
-                    newStates = viewDwr.getViewPointDataAnon(pollRequest.getAnonViewId());
-                else
-                    newStates = viewDwr.getViewPointData(pollRequest.isViewEdit());
-                List<ViewComponentState> differentStates = new ArrayList<ViewComponentState>();
-
-                for (ViewComponentState newState : newStates) {
-                    ViewComponentState oldState = state.getViewComponentState(newState.getId());
-                    if (oldState == null)
-                        differentStates.add(newState);
-                    else {
-                        ViewComponentState copy = newState.clone();
-                        copy.removeEqualValue(oldState);
-                        if (!copy.isEmpty())
-                            differentStates.add(copy);
-                    }
-                }
-
-                if (!differentStates.isEmpty()) {
-                    response.put("viewStates", differentStates);
-                    state.setViewComponentStates(newStates);
-                }
-            }
-
-            if (pollRequest.isCustomView()) {
-                List<CustomComponentState> newStates = customViewDwr.getViewPointData();
-                List<CustomComponentState> differentStates = new ArrayList<CustomComponentState>();
-
-                for (CustomComponentState newState : newStates) {
-                    CustomComponentState oldState = state.getCustomViewState(newState.getId());
-                    if (oldState == null)
-                        differentStates.add(newState);
-                    else {
-                        CustomComponentState copy = newState.clone();
-                        copy.removeEqualValue(oldState);
-                        if (!copy.isEmpty())
-                            differentStates.add(copy);
-                    }
-                }
-
-                if (!differentStates.isEmpty()) {
-                    response.put("customViewStates", differentStates);
-                    state.setCustomViewStates(newStates);
-                }
-            }
-
-            if (pollRequest.isPendingAlarms() && user != null) {
-                // Create the list of most current pending alarm content.
-                Map<String, Object> model = new HashMap<String, Object>();
-                model.put("events", eventDao.getPendingEvents(user.getId()));
-                model.put("pendingEvents", true);
-                model.put("noContentWhenEmpty", true);
-                String currentContent = generateContent(httpRequest, "eventList.jsp", model);
-                currentContent = StringUtils.trimWhitespace(currentContent);
-
-                if (!StringUtils.isEqual(currentContent, state.getPendingAlarmsContent())) {
-                    response.put("pendingAlarmsContent", currentContent);
-                    state.setPendingAlarmsContent(currentContent);
-                }
-            }
-
-            if (!response.isEmpty())
+        // Process each handler
+        for (RequestHandler handler : handlers) {
+            handler.handleRequest(pollRequest, user, response, state);
+            if (!response.isEmpty()) {
                 break;
-
-            synchronized (pollRequest) {
-                try {
-                    pollRequest.wait(waitTime);
-                }
-                catch (InterruptedException e) {
-                    // no op
-                }
             }
-
         }
 
-        if (pollRequest.isTerminated())
+        // Wait logic remains the same
+        synchronized (pollRequest) {
+            try {
+                pollRequest.wait(SystemSettingsDao.getIntValue(SystemSettingsDao.UI_PERFORAMANCE));
+            } catch (InterruptedException e) {
+                // no op
+            }
+        }
+
+        if (pollRequest.isTerminated()) {
             response.put("terminated", true);
+        }
 
         return response;
     }
-
     public void terminateLongPoll(int pollSessionId) {
         terminateLongPollImpl(getLongPollData(pollSessionId, false));
     }
