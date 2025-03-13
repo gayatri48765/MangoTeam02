@@ -2,7 +2,7 @@
     Mango - Open Source M2M - http://mango.serotoninsoftware.com
     Copyright (C) 2006-2011 Serotonin Software Technologies Inc.
     @author Matthew Lohbihler
-    
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -128,12 +128,12 @@ public class EventHandlerVO implements Serializable, ChangeComparable<EventHandl
 
     public EventHandlerRT createRuntime() {
         switch (handlerType) {
-        case TYPE_SET_POINT:
-            return new SetPointHandlerRT(this);
-        case TYPE_EMAIL:
-            return new EmailHandlerRT(this);
-        case TYPE_PROCESS:
-            return new ProcessHandlerRT(this);
+            case TYPE_SET_POINT:
+                return new SetPointHandlerRT(this);
+            case TYPE_EMAIL:
+                return new EmailHandlerRT(this);
+            case TYPE_PROCESS:
+                return new ProcessHandlerRT(this);
         }
         throw new ShouldNeverHappenException("Unknown handler type: " + handlerType);
     }
@@ -146,24 +146,24 @@ public class EventHandlerVO implements Serializable, ChangeComparable<EventHandl
 
     public static LocalizableMessage getSetActionMessage(int action) {
         switch (action) {
-        case SET_ACTION_NONE:
-            return new LocalizableMessage("eventHandlers.action.none");
-        case SET_ACTION_POINT_VALUE:
-            return new LocalizableMessage("eventHandlers.action.point");
-        case SET_ACTION_STATIC_VALUE:
-            return new LocalizableMessage("eventHandlers.action.static");
+            case SET_ACTION_NONE:
+                return new LocalizableMessage("eventHandlers.action.none");
+            case SET_ACTION_POINT_VALUE:
+                return new LocalizableMessage("eventHandlers.action.point");
+            case SET_ACTION_STATIC_VALUE:
+                return new LocalizableMessage("eventHandlers.action.static");
         }
         return new LocalizableMessage("common.unknown");
     }
 
     private static LocalizableMessage getTypeMessage(int handlerType) {
         switch (handlerType) {
-        case TYPE_SET_POINT:
-            return new LocalizableMessage("eventHandlers.type.setPoint");
-        case TYPE_EMAIL:
-            return new LocalizableMessage("eventHandlers.type.email");
-        case TYPE_PROCESS:
-            return new LocalizableMessage("eventHandlers.type.process");
+            case TYPE_SET_POINT:
+                return new LocalizableMessage("eventHandlers.type.setPoint");
+            case TYPE_EMAIL:
+                return new LocalizableMessage("eventHandlers.type.email");
+            case TYPE_PROCESS:
+                return new LocalizableMessage("eventHandlers.type.process");
         }
         return new LocalizableMessage("common.unknown");
     }
@@ -350,92 +350,106 @@ public class EventHandlerVO implements Serializable, ChangeComparable<EventHandl
 
     public void validate(DwrResponseI18n response) {
         if (handlerType == TYPE_SET_POINT) {
-            DataPointVO dp = new DataPointDao().getDataPoint(targetPointId);
+            validateSetPoint(response);
+        } else if (handlerType == TYPE_EMAIL) {
+            validateEmail(response);
+        } else if (handlerType == TYPE_PROCESS) {
+            validateProcess(response);
+        }
+    }
 
-            if (dp == null)
-                response.addGenericMessage("eventHandlers.noTargetPoint");
-            else {
-                int dataType = dp.getPointLocator().getDataTypeId();
+    private void validateSetPoint(DwrResponseI18n response) {
+        DataPointVO dp = new DataPointDao().getDataPoint(targetPointId);
 
-                if (activeAction == SET_ACTION_NONE && inactiveAction == SET_ACTION_NONE)
-                    response.addGenericMessage("eventHandlers.noSetPointAction");
+        if (dp == null) {
+            response.addGenericMessage("eventHandlers.noTargetPoint");
+        } else {
+            int dataType = dp.getPointLocator().getDataTypeId();
 
-                // Active
-                if (activeAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.MULTISTATE) {
-                    try {
-                        Integer.parseInt(activeValueToSet);
-                    }
-                    catch (NumberFormatException e) {
-                        response.addGenericMessage("eventHandlers.invalidActiveValue");
-                    }
+            if (activeAction == SET_ACTION_NONE && inactiveAction == SET_ACTION_NONE) {
+                response.addGenericMessage("eventHandlers.noSetPointAction");
+            }
+
+            // Active
+            if (activeAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.MULTISTATE) {
+                try {
+                    Integer.parseInt(activeValueToSet);
+                } catch (NumberFormatException e) {
+                    response.addGenericMessage("eventHandlers.invalidActiveValue");
                 }
+            }
 
-                if (activeAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.NUMERIC) {
-                    try {
-                        Double.parseDouble(activeValueToSet);
-                    }
-                    catch (NumberFormatException e) {
-                        response.addGenericMessage("eventHandlers.invalidActiveValue");
-                    }
+            if (activeAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.NUMERIC) {
+                try {
+                    Double.parseDouble(activeValueToSet);
+                } catch (NumberFormatException e) {
+                    response.addGenericMessage("eventHandlers.invalidActiveValue");
                 }
+            }
 
-                if (activeAction == SET_ACTION_POINT_VALUE) {
-                    DataPointVO dpActive = new DataPointDao().getDataPoint(activePointId);
+            if (activeAction == SET_ACTION_POINT_VALUE) {
+                DataPointVO dpActive = new DataPointDao().getDataPoint(activePointId);
 
-                    if (dpActive == null)
-                        response.addGenericMessage("eventHandlers.invalidActiveSource");
-                    else if (dataType != dpActive.getPointLocator().getDataTypeId())
-                        response.addGenericMessage("eventHandlers.invalidActiveSourceType");
+                if (dpActive == null) {
+                    response.addGenericMessage("eventHandlers.invalidActiveSource");
+                } else if (dataType != dpActive.getPointLocator().getDataTypeId()) {
+                    response.addGenericMessage("eventHandlers.invalidActiveSourceType");
                 }
+            }
 
-                // Inactive
-                if (inactiveAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.MULTISTATE) {
-                    try {
-                        Integer.parseInt(inactiveValueToSet);
-                    }
-                    catch (NumberFormatException e) {
-                        response.addGenericMessage("eventHandlers.invalidInactiveValue");
-                    }
+            // Inactive
+            if (inactiveAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.MULTISTATE) {
+                try {
+                    Integer.parseInt(inactiveValueToSet);
+                } catch (NumberFormatException e) {
+                    response.addGenericMessage("eventHandlers.invalidInactiveValue");
                 }
+            }
 
-                if (inactiveAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.NUMERIC) {
-                    try {
-                        Double.parseDouble(inactiveValueToSet);
-                    }
-                    catch (NumberFormatException e) {
-                        response.addGenericMessage("eventHandlers.invalidInactiveValue");
-                    }
+            if (inactiveAction == SET_ACTION_STATIC_VALUE && dataType == DataTypes.NUMERIC) {
+                try {
+                    Double.parseDouble(inactiveValueToSet);
+                } catch (NumberFormatException e) {
+                    response.addGenericMessage("eventHandlers.invalidInactiveValue");
                 }
+            }
 
-                if (inactiveAction == SET_ACTION_POINT_VALUE) {
-                    DataPointVO dpInactive = new DataPointDao().getDataPoint(inactivePointId);
+            if (inactiveAction == SET_ACTION_POINT_VALUE) {
+                DataPointVO dpInactive = new DataPointDao().getDataPoint(inactivePointId);
 
-                    if (dpInactive == null)
-                        response.addGenericMessage("eventHandlers.invalidInactiveSource");
-                    else if (dataType != dpInactive.getPointLocator().getDataTypeId())
-                        response.addGenericMessage("eventHandlers.invalidInactiveSourceType");
+                if (dpInactive == null) {
+                    response.addGenericMessage("eventHandlers.invalidInactiveSource");
+                } else if (dataType != dpInactive.getPointLocator().getDataTypeId()) {
+                    response.addGenericMessage("eventHandlers.invalidInactiveSourceType");
                 }
             }
         }
-        else if (handlerType == TYPE_EMAIL) {
-            if (activeRecipients.isEmpty())
-                response.addGenericMessage("eventHandlers.noEmailRecips");
+    }
 
-            if (sendEscalation) {
-                if (escalationDelay <= 0)
-                    response.addContextualMessage("escalationDelay", "eventHandlers.escalDelayError");
-                if (escalationRecipients.isEmpty())
-                    response.addGenericMessage("eventHandlers.noEscalRecips");
+    private void validateEmail(DwrResponseI18n response) {
+        if (activeRecipients.isEmpty()) {
+            response.addGenericMessage("eventHandlers.noEmailRecips");
+        }
+
+        if (sendEscalation) {
+            if (escalationDelay <= 0) {
+                response.addContextualMessage("escalationDelay", "eventHandlers.escalDelayError");
             }
-
-            if (sendInactive && inactiveOverride) {
-                if (inactiveRecipients.isEmpty())
-                    response.addGenericMessage("eventHandlers.noInactiveRecips");
+            if (escalationRecipients.isEmpty()) {
+                response.addGenericMessage("eventHandlers.noEscalRecips");
             }
         }
-        else if (handlerType == TYPE_PROCESS) {
-            if (StringUtils.isEmpty(activeProcessCommand) && StringUtils.isEmpty(inactiveProcessCommand))
-                response.addGenericMessage("eventHandlers.invalidCommands");
+
+        if (sendInactive && inactiveOverride) {
+            if (inactiveRecipients.isEmpty()) {
+                response.addGenericMessage("eventHandlers.noInactiveRecips");
+            }
+        }
+    }
+
+    private void validateProcess(DwrResponseI18n response) {
+        if (StringUtils.isEmpty(activeProcessCommand) && StringUtils.isEmpty(inactiveProcessCommand)) {
+            response.addGenericMessage("eventHandlers.invalidCommands");
         }
     }
 
