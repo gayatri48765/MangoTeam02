@@ -97,65 +97,66 @@ abstract public class DatabaseAccess {
 
         try {
             if (newDatabaseCheck(ejt)) {
-                // Check if we should convert from another database.
-                String convertTypeStr = null;
-                try {
-                    convertTypeStr = Common.getEnvironmentProfile().getString("convert.db.type");
-                }
-                catch (MissingResourceException e) {
-                    // no op
-                }
-
-                if (!StringUtils.isEmpty(convertTypeStr)) {
-                    // Found a database type from which to convert.
-                    DatabaseType convertType = DatabaseType.valueOf(convertTypeStr.toUpperCase());
-                    if (convertType == null)
-                        throw new IllegalArgumentException("Unknown convert database type: " + convertType);
-
-                    DatabaseAccess sourceAccess = convertType.getImpl(ctx);
-                    sourceAccess.initializeImpl("convert.");
-
-                    DBConvert convert = new DBConvert();
-                    convert.setSource(sourceAccess);
-                    convert.setTarget(this);
-                    try {
-                        convert.execute();
-                    }
-                    catch (SQLException e) {
-                        throw new ShouldNeverHappenException(e);
-                    }
-
-                    sourceAccess.terminate();
-                }
-                else {
-                    // New database. Create a default user.
-                    User user = new User();
-                    user.setId(Common.NEW_ID);
-                    user.setUsername("admin");
-                    user.setPassword(Common.encrypt("admin"));
-                    user.setEmail("admin@yourMangoDomain.com");
-                    user.setPhone("");
-                    user.setAdmin(true);
-                    user.setDisabled(false);
-                    user.setDataSourcePermissions(new LinkedList<Integer>());
-                    user.setDataPointPermissions(new LinkedList<DataPointAccess>());
-                    new UserDao().saveUser(user);
-
-                    // Record the current version.
-                    new SystemSettingsDao().setValue(SystemSettingsDao.DATABASE_SCHEMA_VERSION, Common.getVersion());
-                }
-            }
-            else
-                // The database exists, so let's make its schema version matches the application version.
+                convertDatabaseIfNecessary(ejt);
+            } else {
                 DBUpgrade.checkUpgrade();
-        }
-        catch (CannotGetJdbcConnectionException e) {
+            }
+        } catch (CannotGetJdbcConnectionException e) {
             log.fatal("Unable to connect to database of type " + getType().name(), e);
             throw e;
         }
 
         postInitialize(ejt);
     }
+
+    private void convertDatabaseIfNecessary(ExtendedJdbcTemplate ejt) {
+        String convertTypeStr = null;
+        try {
+            convertTypeStr = Common.getEnvironmentProfile().getString("convert.db.type");
+        } catch (MissingResourceException e) {
+            // No operation needed
+        }
+
+        if (!StringUtils.isEmpty(convertTypeStr)) {
+            DatabaseType convertType = DatabaseType.valueOf(convertTypeStr.toUpperCase());
+            if (convertType == null) {
+                throw new IllegalArgumentException("Unknown convert database type: " + convertTypeStr);
+            }
+
+            DatabaseAccess sourceAccess = convertType.getImpl(ctx);
+            sourceAccess.initializeImpl("convert.");
+
+            DBConvert convert = new DBConvert();
+            convert.setSource(sourceAccess);
+            convert.setTarget(this);
+            try {
+                convert.execute();
+            } catch (SQLException e) {
+                throw new ShouldNeverHappenException(e);
+            } finally {
+                sourceAccess.terminate();
+            }
+        } else {
+            createDefaultUser();
+        }
+    }
+
+    private void createDefaultUser() {
+        User user = new User();
+        user.setId(Common.NEW_ID);
+        user.setUsername("admin");
+        user.setPassword(Common.encrypt("admin"));
+        user.setEmail("admin@yourMangoDomain.com");
+        user.setPhone("");
+        user.setAdmin(true);
+        user.setDisabled(false);
+        user.setDataSourcePermissions(new LinkedList<Integer>());
+        user.setDataPointPermissions(new LinkedList<DataPointAccess>());
+        new UserDao().saveUser(user);
+
+        new SystemSettingsDao().setValue(SystemSettingsDao.DATABASE_SCHEMA_VERSION, Common.getVersion());
+    }
+
 
     abstract public DatabaseType getType();
 
